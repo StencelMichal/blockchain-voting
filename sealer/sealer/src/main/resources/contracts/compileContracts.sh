@@ -1,0 +1,1 @@
+ solc SimpleStorage.sol --bin --abi --optimize -o ./compiled
