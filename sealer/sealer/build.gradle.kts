@@ -5,6 +5,8 @@ plugins {
     id("io.spring.dependency-management") version "1.1.4"
     kotlin("jvm") version "1.9.22"
     kotlin("plugin.spring") version "1.9.22"
+    id("java")
+//    id("org.web3j") version "4.11.0"
 }
 
 group = "com.stencel.evoting"
@@ -19,9 +21,19 @@ repositories {
 }
 
 dependencies {
+
+    // web3j
+    implementation("org.web3j:core:5.0.0")
+
+    // spring
     implementation("org.springframework.boot:spring-boot-starter-web")
+
+    // serialization
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+    // test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
