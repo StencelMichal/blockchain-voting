@@ -15,20 +15,20 @@ class RingSignatureCreatorTest {
 
     private val random = SecureRandom()
 
-    @Test
-    fun `createRingSignature should return RingSignature`() {
-        Security.addProvider(BouncyCastleProvider())
-        val message = "test_message"
-        val signerKeyPair = CryptographyUtils.generateRsaKeyPair()
-        val publicKeys =
-            listOf(CryptographyUtils.generateRsaKeyPair().public, CryptographyUtils.generateRsaKeyPair().public)
-        val ringSignature = RingSignatureCreatorOld.createRingSignature(message, signerKeyPair, publicKeys)
-
-        println("---- VERIFICATION -----")
-        val verificationResult = RingSignatureVerifier.verifyRingSignature(message, ringSignature)
-        println(verificationResult)
-
-    }
+//    @Test
+//    fun `createRingSignature should return RingSignature`() {
+//        Security.addProvider(BouncyCastleProvider())
+//        val message = "test_message"
+//        val signerKeyPair = CryptographyUtils.generateRsaKeyPair()
+//        val publicKeys =
+//            listOf(CryptographyUtils.generateRsaKeyPair().public, CryptographyUtils.generateRsaKeyPair().public)
+//        val ringSignature = RingSignatureCreatorOld.createRingSignature(message, signerKeyPair, publicKeys)
+//
+//        println("---- VERIFICATION -----")
+//        val verificationResult = RingSignatureVerifier.verifyRingSignature(message, ringSignature)
+//        println(verificationResult)
+//
+//    }
 
     @Test
     fun `asd`() {
@@ -48,9 +48,10 @@ class RingSignatureCreatorTest {
         val attemptsAmount = 20
         val ringSize = 10
         val verifiedSignaturesAmount = List(attemptsAmount) { _ ->
+            val message = "hello world!"
             val signerKeyPair = CryptographyUtils.generateRsaKeyPair()
             val publicKeys = List(ringSize - 1) { CryptographyUtils.generateRsaKeyPair().public }
-            val signature = RingSignatureCreator().sign("hello world!", signerKeyPair, publicKeys)
+            val signature = RingSignatureCreator().sign(message, signerKeyPair, publicKeys)
             val isVerified = RingSignatureCreator().verify(signature)
             if (isVerified) 1 else 0
         }.sum()

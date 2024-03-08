@@ -109,6 +109,29 @@ class RingSignatureCreator {
         return BigInteger(1, decryptedContentKey)
     }
 
+    fun rsaEncrypt(msg: BigInteger, e:BigInteger, n:BigInteger): BigInteger {
+        val spec = RSAPublicKeySpec(n, e)
+        val factory = KeyFactory.getInstance("RSA");
+        val publicKey = factory.generatePublic(spec)
+        val enc = Cipher.getInstance("RSA/ECB/NoPadding")
+        enc.init(Cipher.ENCRYPT_MODE, publicKey)
+        val encryptedContentKey = enc.doFinal(truncateLeadingZeros(msg.toByteArray()))
+        return BigInteger(1, encryptedContentKey)
+    }
+
+    fun truncateLeadingZeros(input: ByteArray): ByteArray {
+        var startIndex = 0
+        for (i in input.indices) {
+            if (input[i] != 0.toByte()) {
+                startIndex = i
+                break
+            }
+        }
+        return input.copyOfRange(startIndex, input.size)
+    }
+
+
+
     fun rsaEncrypt(msg: BigInteger, publicKey: PublicKey): BigInteger {
 //        val spec = RSAPublicKeySpec(n, e)
 //        val factory = KeyFactory.getInstance("RSA");
@@ -133,7 +156,7 @@ class RingSignatureCreator {
             val e = (row as Map<String, BigInteger>)["e"]!!
             val n = row["n"]!!
             val s = row["userValues"] as BigInteger
-            v = keyedHash(key, xor(v, rsaEncryptOrDecrypt(s, e, n)).toString())
+            v = keyedHash(key, xor(v, rsaEncrypt(s, e, n)).toString())
         }
         return v == signature["v"]
     }
