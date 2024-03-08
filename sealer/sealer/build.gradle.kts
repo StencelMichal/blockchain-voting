@@ -24,6 +24,19 @@ dependencies {
 
     // web3j
     implementation("org.web3j:core:5.0.0")
+    implementation("org.web3j:abi:4.7.0")
+//    implementation("org.web3j:codegen:5.0.0")
+//    implementation("org.web3j:crypto:5.0.0")
+//    implementation("org.web3j:utils:5.0.0")
+//    implementation("org.web3j:rlp:5.0.0")
+
+
+
+//    implementation("org.web3j:web3j-gradle-plugin:4.6.0")
+
+    implementation("org.bouncycastle:bcprov-jdk16:1.46")
+
+
 
     // spring
     implementation("org.springframework.boot:spring-boot-starter-web")
