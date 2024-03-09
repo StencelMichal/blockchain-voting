@@ -12,47 +12,48 @@ class RingSignatureCreator {
 
     companion object {
 
+        private val random = SecureRandom()
 
         fun sign(message: String, signerKeyPair: KeyPair, publicKeys: List<PublicKey>): RingSignature {
             val ringSize = publicKeys.size + 1
             val hashedMessage = cryptoHash(message)
-            val startGlueValue = BigInteger(1024, SecureRandom())
-            val v = MutableList<BigInteger>(ringSize) { BigInteger.ZERO }
-            v[0] = keyedHash(hashedMessage, startGlueValue.toString())
+
+            val startGlueValue = BigInteger(1024, random)
+            val glueValues = mutableListOf<BigInteger>(keyedHash(hashedMessage, startGlueValue.toString()))
 
             val userValues = mutableListOf<BigInteger>().apply {
+                addAll((1 until ringSize).map { BigInteger(1024, random) })
                 add(BigInteger.ZERO)
-                addAll((1 until ringSize).map { BigInteger(1024, SecureRandom()) })
             }
 
-            for (i in 1 until ringSize) {
-                val encryptedValue = encrypt(userValues[i], publicKeys[i - 1])
-                val xored = v[i - 1] xor encryptedValue
-                println("glueValue: ${v[i - 1]}")
-                v[i] = keyedHash(hashedMessage, xored.toString())
+            for (i in 0 until ringSize - 1) {
+                val encryptedValue = encrypt(userValues[i], publicKeys[i])
+                val xored = glueValues.last() xor encryptedValue
+                println("glueValue: ${glueValues.last()}")
+                glueValues += keyedHash(hashedMessage, xored.toString())
             }
-            println("glueValue: ${v[ringSize - 1]}")
-            userValues[0] = rsaDecrypt(v[ringSize - 1] xor startGlueValue, signerKeyPair.private)
+            println("glueValue: ${glueValues.last()}")
+            userValues[userValues.size - 1] = rsaDecrypt(glueValues.last() xor startGlueValue, signerKeyPair.private)
 
             val signatureRows = mutableListOf<Map<String, Any>>().apply {
+                addAll((0 until ringSize -1).map { i ->
+                    mapOf(
+                        "e" to (publicKeys[i] as java.security.interfaces.RSAPublicKey).publicExponent,
+                        "n" to (publicKeys[i] as java.security.interfaces.RSAPublicKey).modulus,
+                        "userValues" to userValues[i]
+                    )
+                })
                 add(
                     mapOf(
                         "e" to (signerKeyPair.public as java.security.interfaces.RSAPublicKey).publicExponent,
                         "n" to (signerKeyPair.public as java.security.interfaces.RSAPublicKey).modulus,
-                        "userValues" to userValues[0]
+                        "userValues" to userValues.last()
                     )
                 )
-                addAll((1 until ringSize).map { i ->
-                    mapOf(
-                        "e" to (publicKeys[i - 1] as java.security.interfaces.RSAPublicKey).publicExponent,
-                        "n" to (publicKeys[i - 1] as java.security.interfaces.RSAPublicKey).modulus,
-                        "userValues" to userValues[i]
-                    )
-                })
             }
 
             val rotation = 0
-            val rotatedV = v.takeLast(rotation) + v.dropLast(rotation)
+            val rotatedV = glueValues.takeLast(rotation) + glueValues.dropLast(rotation)
             val rotatedRows = signatureRows.takeLast(rotation) + signatureRows.dropLast(rotation)
 
             val x = mapOf(
@@ -62,8 +63,8 @@ class RingSignatureCreator {
             )
 
             val y = RingSignature(
-                keys = rotateList(listOf(signerKeyPair.public) + publicKeys, rotation),
-                startValue = rotatedV.last(),
+                keys = rotateList(publicKeys + signerKeyPair.public, rotation),
+                startValue = rotatedV.first(),
                 ringValues = rotatedRows.map { it["userValues"] as BigInteger }
             )
 
