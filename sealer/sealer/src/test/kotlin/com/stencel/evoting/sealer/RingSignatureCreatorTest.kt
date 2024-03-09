@@ -13,16 +13,14 @@ class RingSignatureCreatorTest {
         Security.addProvider(BouncyCastleProvider())
         val attemptsAmount = 20
         val ringSize = 10
-        val verifiedSignaturesAmount = List(attemptsAmount) { _ ->
+        List(attemptsAmount) { _ ->
             val message = "hello world!"
             val signerKeyPair = CryptographyUtils.generateRsaKeyPair()
             val publicKeys = List(ringSize - 1) { CryptographyUtils.generateRsaKeyPair().public }
-            val signature = RingSignatureCreator.sign(message, signerKeyPair, publicKeys)
-            println("---- VERIFICAION -----")
-            val isVerified = RingSignatureVerifier.verifyRingSignature(message, signature)
-            if (isVerified) 1 else 0
-        }.sum()
-        assertEquals(attemptsAmount, verifiedSignaturesAmount)
+            val signature = RingSignature.create(message, signerKeyPair, publicKeys)
+            val isVerified = signature.verify(message)
+            assertEquals(true, isVerified)
+        }
     }
 
     @Test
@@ -32,8 +30,8 @@ class RingSignatureCreatorTest {
         val publicKeys = List(10) { CryptographyUtils.generateRsaKeyPair().public }
         val creationMessage = "creation_message"
         val verificationMessage = "verification_message"
-        val signature = RingSignatureCreator.sign(creationMessage, signerKeyPair, publicKeys)
-        val isVerified = RingSignatureVerifier.verifyRingSignature(verificationMessage, signature)
+        val signature = RingSignature.create(creationMessage, signerKeyPair, publicKeys)
+        val isVerified = signature.verify(verificationMessage)
         assertEquals(false, isVerified)
     }
 

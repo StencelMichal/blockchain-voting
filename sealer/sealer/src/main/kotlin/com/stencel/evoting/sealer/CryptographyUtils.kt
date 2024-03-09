@@ -24,12 +24,20 @@ class CryptographyUtils {
             return keyPairGenerator.generateKeyPair()
         }
 
-        fun encrypt(msg: BigInteger, publicKey: PublicKey): BigInteger {
+        fun rsaEncrypt(msg: BigInteger, publicKey: PublicKey): BigInteger {
             val enc = Cipher.getInstance("RSA/ECB/NoPadding")
             enc.init(Cipher.ENCRYPT_MODE, publicKey)
             val encryptedContentKey = enc.doFinal(truncateLeadingZeros(msg.toByteArray()))
             return BigInteger(1, encryptedContentKey)
         }
+
+        fun rsaDecrypt(msg: BigInteger, privateKey: PrivateKey): BigInteger {
+            val dec = Cipher.getInstance("RSA/ECB/NoPadding")
+            dec.init(Cipher.DECRYPT_MODE, privateKey)
+            val decryptedContentKey = dec.doFinal(msg.toByteArray())
+            return BigInteger(1, decryptedContentKey)
+        }
+
 
         fun cryptoHash(msg: String): BigInteger {
             val digest = MessageDigest.getInstance("SHA-256")
