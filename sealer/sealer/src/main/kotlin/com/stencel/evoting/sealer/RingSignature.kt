@@ -8,6 +8,7 @@ data class RingSignature(
     val keys: List<PublicKey>,
     val startValue: BigInteger,
     val ringValues: List<BigInteger>,
+    val tag: BigInteger
 ) {
     val size = keys.size
 

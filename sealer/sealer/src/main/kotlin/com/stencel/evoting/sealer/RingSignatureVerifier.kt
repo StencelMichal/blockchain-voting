@@ -11,8 +11,9 @@ class RingSignatureVerifier {
             val hashedMessage = cryptoHash(message)
             val lastGlueValue = signature.ringValues.zip(signature.keys).fold(signature.startValue) { glueValue, (ringValue, key) ->
                 val encryptedValue = rsaEncrypt(ringValue, key)
-                val xored = glueValue xor encryptedValue
-                keyedHash(hashedMessage, xored.toString())
+                val withGlueValue = encryptedValue xor glueValue
+                val withRingTag = withGlueValue xor signature.tag
+                keyedHash(hashedMessage, withRingTag.toString())
             }
             return lastGlueValue == signature.startValue
         }

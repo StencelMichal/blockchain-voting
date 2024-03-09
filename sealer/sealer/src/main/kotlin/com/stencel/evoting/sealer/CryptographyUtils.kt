@@ -40,8 +40,12 @@ class CryptographyUtils {
 
 
         fun cryptoHash(msg: String): BigInteger {
+            return cryptoHash(msg.toByteArray())
+        }
+
+        fun cryptoHash(msg: ByteArray): BigInteger {
             val digest = MessageDigest.getInstance("SHA-256")
-            val hashBytes = digest.digest(msg.toByteArray())
+            val hashBytes = digest.digest(msg)
             return BigInteger(1, hashBytes)
         }
 
