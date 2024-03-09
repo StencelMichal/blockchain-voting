@@ -1,5 +1,6 @@
 package com.stencel.evoting.sealer
 
+import java.math.BigInteger
 import java.security.*
 import javax.crypto.Cipher
 import javax.crypto.Mac
@@ -23,15 +24,38 @@ class CryptographyUtils {
             return keyPairGenerator.generateKeyPair()
         }
 
-        fun hash(value: String): ByteArray {
-            val digest = MessageDigest.getInstance("SHA-256")
-            return digest.digest(value.toByteArray())
+        fun encrypt(msg: BigInteger, publicKey: PublicKey): BigInteger {
+            val enc = Cipher.getInstance("RSA/ECB/NoPadding")
+            enc.init(Cipher.ENCRYPT_MODE, publicKey)
+            val encryptedContentKey = enc.doFinal(truncateLeadingZeros(msg.toByteArray()))
+            return BigInteger(1, encryptedContentKey)
         }
 
-        fun encrypt(message: ByteArray, publicKey: PublicKey): ByteArray {
-            val cipher = Cipher.getInstance("RSA/None/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, publicKey)
-            return cipher.doFinal(message)
+        fun cryptoHash(msg: String): BigInteger {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hashBytes = digest.digest(msg.toByteArray())
+            return BigInteger(1, hashBytes)
+        }
+
+
+        fun keyedHash(key: BigInteger, msg: String): BigInteger {
+            val hmac = Mac.getInstance("HmacSHA256")
+            val secretKey = SecretKeySpec(key.toByteArray(), "HmacSHA256")
+            hmac.init(secretKey)
+            val hashBytes = hmac.doFinal(msg.toByteArray())
+            return BigInteger(1, hashBytes)
+        }
+
+
+        private fun truncateLeadingZeros(input: ByteArray): ByteArray {
+            var startIndex = 0
+            for (i in input.indices) {
+                if (input[i] != 0.toByte()) {
+                    startIndex = i
+                    break
+                }
+            }
+            return input.copyOfRange(startIndex, input.size)
         }
 
         fun xorByteArrays(arr1: ByteArray, arr2: ByteArray): ByteArray {
