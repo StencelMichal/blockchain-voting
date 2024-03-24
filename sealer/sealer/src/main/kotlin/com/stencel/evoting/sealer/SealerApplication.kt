@@ -1,8 +1,12 @@
 package com.stencel.evoting.sealer
 
+import com.stencel.evoting.sealer.CryptographyUtils.Companion.generateRsaKeyPair
 import com.stencel.evoting.sealer.VotingState.Vote
+import com.stencel.evoting.sealer.service.BigNumbersManagerService
+import com.stencel.evoting.sealer.service.VotingStateManagerService
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.ConfigurableApplicationContext
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.WalletUtils
 import org.web3j.protocol.Web3j
@@ -15,6 +19,7 @@ import java.nio.file.Path
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.SecureRandom
+import java.util.*
 import javax.crypto.Cipher
 
 
@@ -22,11 +27,67 @@ import javax.crypto.Cipher
 class SealerApplication
 
 fun main(args: Array<String>) {
-    runApplication<SealerApplication>(*args)
-    keyPairs()
+    val context = runApplication<SealerApplication>(*args)
+//    val votingStateContract = context.getBean(VotingStateManagerService::class.java).contract
+//    val bigNumbersContract = context.getBean(BigNumbersManagerService::class.java).contract
+//    println("BIG NUMBERS ADDRESS: ${bigNumbersContract.contractAddress}")
+//    println("START")
+//    votingStateContract.clearLogs().send()
+//    println("CLEARED")
+//    votingStateContract.testBigNumbers().send()
+//    printLogger(context)
+//    println("END")
 
+    verifyRingSignatureOnChain(context)
+    printLogger(context)
 }
 
+private fun printLogger(context: ConfigurableApplicationContext){
+    println("START LOGS ==============================")
+    val votingStateContract = context.getBean(VotingStateManagerService::class.java).contract
+    val logs = votingStateContract.getLogs().send()
+    logs.forEach{println(it)}
+    println("END LOGS ==============================")
+}
+
+private fun verifyRingSignatureOnChain(context: ConfigurableApplicationContext){
+    val votingStateContract = context.getBean(VotingStateManagerService::class.java).contract
+    votingStateContract.clearLogs().send()
+    println("Cleared logs")
+    val newVote = generateVote()
+//    votingStateContract.addVote(newVote).send()
+    votingStateContract.setVote(newVote).send()
+    println("Vote added")
+    val vote = votingStateContract.vote().send()
+    println("Vote: $vote")
+
+    println("tag: ${vote.component2().tag}")
+    println("ringValues: ${vote.component2().ringValues.joinToString(" ")}")
+    println("startValue: ${vote.component2().startValue}")
+    println("voteContent: ${vote.component1()}")
+    println("_______________________")
+
+    val hash = votingStateContract.hash().send()
+    println(hash)
+}
+
+private fun generateVote(): Vote {
+    val voteContent = "Janek"
+    val ringSignature = generateRingSignature(voteContent)
+    return Vote(voteContent, ringSignature)
+}
+
+private fun generateRingSignature(voteContent:String): VotingState.RingSignature {
+    val encoder = Base64.getEncoder()
+    val keyPair = generateRsaKeyPair()
+    val publicKeys = List(9){generateRsaKeyPair().public}
+    val signature = RingSignature.create(voteContent, keyPair, publicKeys)
+    return VotingState.RingSignature(
+        encoder.encodeToString(signature.startValue.toByteArray()),
+        signature.ringValues.map { encoder.encodeToString(it.toByteArray())},
+        encoder.encodeToString(signature.tag.toByteArray())
+    )
+}
 
 private fun keyPairs() {
     val keyPair = generateRsaKeyPair()
@@ -87,9 +148,10 @@ private fun deplyContracts() {
 //    contract.addVote(Vote("Jan")).send()
 //    contract.addVote(Vote("Basia")).send()
 
-    println(contract.votes(BigInteger.valueOf(0)).send())
-    println(contract.votes(BigInteger.valueOf(1)).send())
-    println(contract.votes(BigInteger.valueOf(2)).send())
+//    println(contract.votes(BigInteger.valueOf(0)).send())
+//    println(contract.votes(BigInteger.valueOf(1)).send())
+//    println(contract.votes(BigInteger.valueOf(2)).send())
+
 
 
 //    println("GET " + contract.get().send())

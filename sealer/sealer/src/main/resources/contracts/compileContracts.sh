@@ -4,7 +4,7 @@ for file in *.sol; do
   if [ -f "$file" ]; then
 
     echo "Compiling file: $file"
-    solc $file --overwrite --bin --abi --optimize -o ./compiled
+    solc $file --overwrite --bin --abi -o ./compiled
 
     filename="${file%.*}"
 
