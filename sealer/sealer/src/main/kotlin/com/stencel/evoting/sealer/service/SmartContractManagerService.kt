@@ -1,6 +1,7 @@
 package com.stencel.evoting.sealer.service
 
-import com.stencel.evoting.sealer.database.SmartContractAddress
+import com.stencel.evoting.sealer.CryptographyUtils.Companion.cryptoHash
+import com.stencel.evoting.sealer.database.SmartContract
 import com.stencel.evoting.sealer.database.SmartContractAddressRepository
 import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
@@ -10,12 +11,13 @@ import org.web3j.tx.gas.ContractGasProvider
 import java.lang.reflect.ParameterizedType
 import kotlin.jvm.optionals.getOrNull
 
+
 abstract class SmartContractManagerService<T : Contract>(
     private val web3j: Web3j,
     private val credentials: Credentials,
     private val gasProvider: ContractGasProvider,
     private val smartContractAddressRepository: SmartContractAddressRepository,
-    private val binary: String,
+    private val localBinary: String,
     private val deploy: (Web3j, Credentials) -> RemoteCall<T>,
     private val load: (String, Credentials, ContractGasProvider) -> T
 ) {
@@ -25,24 +27,25 @@ abstract class SmartContractManagerService<T : Contract>(
     val contract: T = initializeContract()
 
     private fun initializeContract(): T {
-        return loadContractAddress()
-            ?.let { load(it, credentials, gasProvider) }
-            ?.let { if (!hasContractChanged(it.contractAddress)) it else null }
+        return loadContract()
+            ?.takeIf { !hasContractChanged(it) }
+            ?.let { load(it.contractAddress, credentials, gasProvider) }
             ?: deployContract()
     }
 
-    private fun loadContractAddress(): String? {
-        return smartContractAddressRepository.findById(contractName).getOrNull()?.contractAddress
+    private fun loadContract(): SmartContract? {
+        return smartContractAddressRepository.findById(contractName).getOrNull()
     }
 
     private fun saveContractAddress(address: String) {
-        val smartContractAddress = SmartContractAddress(contractName, address)
+        val contractHash = cryptoHash(localBinary).toString()
+        val smartContractAddress = SmartContract(contractName, address, contractHash)
         smartContractAddressRepository.save(smartContractAddress)
     }
 
-    private fun hasContractChanged(contractAddress: String): Boolean {
-        val deployedContractBinary = load(contractAddress, credentials, gasProvider).contractBinary
-        return deployedContractBinary != binary
+    private fun hasContractChanged(smartContract: SmartContract): Boolean {
+        val currentHash = cryptoHash(localBinary).toString()
+        return smartContract.hash != currentHash
     }
 
     private fun deployContract(): T {

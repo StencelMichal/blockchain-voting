@@ -19,7 +19,7 @@ class VotingStateManagerService(
     credentials = credentials,
     gasProvider = gasProvider,
     smartContractAddressRepository = smartContractAddressRepository,
-    binary = VotingState.BINARY,
+    localBinary = VotingState.BINARY,
     deploy = { web3j, credentials -> VotingState.deploy(web3j, credentials, gasProvider) },
     load = { address, credentials, gasProvider -> VotingState.load(address, web3j, credentials, gasProvider) }
 )
@@ -35,7 +35,7 @@ class BigNumbersManagerService(
     credentials = credentials,
     gasProvider = gasProvider,
     smartContractAddressRepository = smartContractAddressRepository,
-    binary = BigNumbers.BINARY,
+    localBinary = BigNumbers.BINARY,
     deploy = { web3j, credentials -> BigNumbers.deploy(web3j, credentials, gasProvider) },
     load = { address, credentials, gasProvider -> BigNumbers.load(address, web3j, credentials, gasProvider) }
 )

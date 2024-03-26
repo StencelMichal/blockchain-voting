@@ -25,7 +25,7 @@ class Web3jConfiguration {
 
     @Bean
     fun contractGasProvider(): ContractGasProvider {
-        return StaticGasProvider(BigInteger.valueOf(20000000000), BigInteger.valueOf(6721975))
+        return StaticGasProvider(BigInteger.valueOf(20000000000), BigInteger.valueOf(9000000))
 //        return DefaultGasProvider()
 
     }

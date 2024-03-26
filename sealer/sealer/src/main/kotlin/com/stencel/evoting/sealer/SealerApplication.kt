@@ -80,8 +80,9 @@ private fun generateVote(): Vote {
 private fun generateRingSignature(voteContent:String): VotingState.RingSignature {
     val encoder = Base64.getEncoder()
     val keyPair = generateRsaKeyPair()
-    val publicKeys = List(9){generateRsaKeyPair().public}
+    val publicKeys = List(2){generateRsaKeyPair().public}
     val signature = RingSignature.create(voteContent, keyPair, publicKeys)
+    signature.verify(voteContent)
     return VotingState.RingSignature(
         encoder.encodeToString(signature.startValue.toByteArray()),
         signature.ringValues.map { encoder.encodeToString(it.toByteArray())},
