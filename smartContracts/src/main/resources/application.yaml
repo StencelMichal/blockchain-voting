@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/evoting_database
+    username: michal
+    password: 12345
+  jpa:
+    hibernate:
+      ddl-auto: update
+#    show-sql: true
