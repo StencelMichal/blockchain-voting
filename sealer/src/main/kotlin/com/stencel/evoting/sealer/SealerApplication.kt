@@ -1,10 +1,8 @@
 package com.stencel.evoting.sealer
 
-import com.n1analytics.paillier.EncryptedNumber
 import com.n1analytics.paillier.PaillierPrivateKey
-import com.stencel.evoting.smartcontracts.CryptographyUtils.Companion.generateRsaKeyPair
+import com.stencel.evoting.smartcontracts.util.CryptographyUtils.Companion.generateRsaKeyPair
 import com.stencel.evoting.smartcontracts.VotingState
-import com.stencel.evoting.smartcontracts.VotingState.Vote
 import com.stencel.evoting.smartcontracts.service.VotingStateManagerService
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -21,7 +19,6 @@ import java.nio.file.Path
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.SecureRandom
-import java.util.*
 import javax.crypto.Cipher
 
 

@@ -1,4 +1,4 @@
-package com.stencel.evoting.smartcontracts
+package com.stencel.evoting.smartcontracts.util
 
 import java.math.BigInteger
 import java.security.*

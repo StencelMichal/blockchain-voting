@@ -1,8 +1,8 @@
-package com.stencel.evoting.sealer
+package com.stencel.evoting.smartcontracts.ringSignature
 
-import com.stencel.evoting.smartcontracts.CryptographyUtils.Companion.cryptoHash
-import com.stencel.evoting.smartcontracts.CryptographyUtils.Companion.rsaEncrypt
-import com.stencel.evoting.smartcontracts.CryptographyUtils.Companion.keyedHash
+import com.stencel.evoting.smartcontracts.util.CryptographyUtils.Companion.cryptoHash
+import com.stencel.evoting.smartcontracts.util.CryptographyUtils.Companion.rsaEncrypt
+import com.stencel.evoting.smartcontracts.util.CryptographyUtils.Companion.keyedHash
 import java.util.*
 
 class RingSignatureVerifier {

@@ -1,2 +1,2 @@
 rootProject.name = "blockchain-evoting"
-include("sealer", "smartContracts", "voter")
+include("sealer", "smartContracts", "voter", "bootnode")

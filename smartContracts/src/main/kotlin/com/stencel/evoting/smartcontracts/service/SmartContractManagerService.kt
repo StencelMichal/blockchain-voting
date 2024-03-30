@@ -1,6 +1,6 @@
 package com.stencel.evoting.smartcontracts.service
 
-import com.stencel.evoting.smartcontracts.CryptographyUtils.Companion.cryptoHash
+import com.stencel.evoting.smartcontracts.util.CryptographyUtils.Companion.cryptoHash
 import com.stencel.evoting.smartcontracts.database.SmartContract
 import com.stencel.evoting.smartcontracts.database.SmartContractAddressRepository
 import org.web3j.crypto.Credentials

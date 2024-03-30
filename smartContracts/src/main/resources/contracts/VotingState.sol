@@ -6,14 +6,14 @@ import "Base64.sol";
 
 contract VotingState {
 
-
     Vote[] public votes;
     BigNumber public hash;
     string[] public logger;
-    PaillierPublicKey private commonEncryptionKey;
-    uint public candidatesAmount;
+    PaillierPublicKey public commonEncryptionKey;
+    string[] public candidates;
     VotingState public state;
     string[] public voterQuestions;
+    RsaPublicKey[] public votersPublicKeys;
 //    Vote[] public votes;
 
 
@@ -21,19 +21,45 @@ contract VotingState {
 
     function initializeVoting(
         PaillierPublicKey memory key,
-        uint _candidatesAmount,
-        string[] memory _voterQuestions
+        string[] memory _candidates,
+        string[] memory _voterQuestions,
+        RsaPublicKey[] memory _votersPublicKeys
     ) public {
         // TODO assert bootnode
         commonEncryptionKey = key;
-        candidatesAmount = candidatesAmount;
+        candidates = _candidates;
         voterQuestions = _voterQuestions;
+//        votersPublicKeys = new RsaPublicKey[](_votersPublicKeys.length);
+        for (uint i = 0; i < _votersPublicKeys.length; i++) {
+            votersPublicKeys.push(_votersPublicKeys[i]);
+        }
         state = VotingState.VOTING;
+    }
+
+    function getCandidates() public view returns (string[] memory) {
+        return candidates;
+    }
+
+    function getVoterQuestions() public view returns (string[] memory) {
+        return voterQuestions;
+    }
+
+    function getVotersPublicKeyss() public view returns (RsaPublicKey[] memory) {
+        return votersPublicKeys;
+    }
+
+    function getVotersPublicKey(uint id) public view returns (RsaPublicKey memory) {
+        return votersPublicKeys[id];
     }
 
     struct PaillierPublicKey {
         string n_base64;
         string g_base64;
+    }
+
+    struct RsaPublicKey {
+        string modulus_base64;
+        string exponent_base64;
     }
 
     struct RingSignature {
@@ -134,7 +160,7 @@ contract VotingState {
     }
 
     function vote(Vote memory newVote) public {
-        require(newVote.voteContent.length == candidatesAmount, "Invalid vote content length");
+        require(newVote.voteContent.length == candidates.length, "Invalid vote content length");
         require(newVote.voterEncryptedAnswers.length == voterQuestions.length, "Invalid answers length");
 //        validateRsaRingSignature(newVote.ringSignature, newVote.candidate);
         votes.push(newVote);

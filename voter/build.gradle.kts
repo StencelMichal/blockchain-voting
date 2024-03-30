@@ -5,6 +5,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.4"
     kotlin("jvm") version "1.9.23"
     kotlin("plugin.spring") version "1.9.23"
+    kotlin("plugin.noarg") version "1.9.23"
 }
 
 group = "com.stencel.evoting"
@@ -24,6 +25,9 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
+    // pailier ecrpytion
+    implementation("com.n1analytics:javallier_2.10:0.6.0")
+
     // web3j
     implementation("org.web3j:core:5.0.0")
     implementation("org.web3j:abi:4.11.0")
@@ -33,10 +37,17 @@ dependencies {
 
     // spring
     implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
     // TEST
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
+
+noArg {
+    annotation("jakarta.persistence.Entity")
+}
+
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {

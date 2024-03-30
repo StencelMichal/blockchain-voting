@@ -1,5 +1,7 @@
-package com.stencel.evoting.sealer
+package com.stencel.evoting.smartcontracts
 
+import com.stencel.evoting.smartcontracts.ringSignature.RingSignature
+import com.stencel.evoting.smartcontracts.util.CryptographyUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals

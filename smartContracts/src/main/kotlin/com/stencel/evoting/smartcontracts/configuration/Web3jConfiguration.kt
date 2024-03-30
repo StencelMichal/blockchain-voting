@@ -1,4 +1,4 @@
-package com.stencel.evoting.sealer.configuration
+package com.stencel.evoting.smartcontracts.configuration
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
