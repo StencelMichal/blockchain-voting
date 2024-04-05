@@ -14,10 +14,35 @@ contract VotingState {
     VotingState public state;
     string[] public voterQuestions;
     RsaPublicKey[] public votersPublicKeys;
+    VotingResult public votingResult;
+
 //    Vote[] public votes;
 
 
     enum VotingState {INITIALIZATION, VOTING, TALLYING}
+
+    struct VotingResult{
+        uint totalVotes;
+        uint[] votes;
+    }
+
+    struct EncodedVote{
+        string ciphertext;
+        string exponent;
+    }
+
+    function publishVotingResults(VotingResult memory result) public {
+        // TODO assert
+        votingResult = result;
+    }
+
+    function retrieveVotingResults() public view returns (VotingResult memory) {
+        return votingResult;
+    }
+
+    function getAllVotes() public view returns (Vote[] memory) {
+        return votes;
+    }
 
     function initializeVoting(
         PaillierPublicKey memory key,
@@ -70,7 +95,8 @@ contract VotingState {
     }
 
     struct Vote {
-        string[] voteContent;
+        string[] encryptedVotes;
+        uint[] encryptedExponents;
         string[] voterEncryptedAnswers;
         RingSignature ringSignature;
     }
@@ -160,8 +186,9 @@ contract VotingState {
     }
 
     function vote(Vote memory newVote) public {
-        require(newVote.voteContent.length == candidates.length, "Invalid vote content length");
+        require(newVote.encryptedVotes.length == candidates.length, "Invalid vote content length");
         require(newVote.voterEncryptedAnswers.length == voterQuestions.length, "Invalid answers length");
+        require(newVote.encryptedVotes.length == newVote.encryptedExponents.length, "Invalid encrypted votes length");
 //        validateRsaRingSignature(newVote.ringSignature, newVote.candidate);
         votes.push(newVote);
     }

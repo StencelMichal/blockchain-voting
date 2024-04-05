@@ -25,11 +25,13 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
+    implementation("info.picocli:picocli:4.7.5")
+
     // pailier ecrpytion
     implementation("com.n1analytics:javallier_2.10:0.6.0")
 
     // web3j
-    implementation("org.web3j:core:5.0.0")
+    implementation("org.web3j:core:4.11.0")
     implementation("org.web3j:abi:4.11.0")
 
     // database
