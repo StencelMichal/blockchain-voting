@@ -32,7 +32,11 @@ class CLI(
             if (input.equals("exit", ignoreCase = true)) {
                 exitProcess(0)
             }
-            interpreter.execute(*input.split(" ").toTypedArray())
+            try {
+                interpreter.execute(*input.split(" ").toTypedArray())
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
         }
 
     }

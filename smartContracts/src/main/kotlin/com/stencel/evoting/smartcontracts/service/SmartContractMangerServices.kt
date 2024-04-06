@@ -19,6 +19,6 @@ class VotingStateManagerService(
     gasProvider = gasProvider,
     smartContractAddressRepository = smartContractAddressRepository,
     localBinary = VotingState.BINARY,
-    deploy = { web3j, credentials -> VotingState.deploy(web3j, credentials, gasProvider) },
+    deploy = { web3j, credentials -> VotingState.deploy(web3j, credentials, gasProvider, credentials.address) },
     load = { address, credentials, gasProvider -> VotingState.load(address, web3j, credentials, gasProvider) }
 )

@@ -3,176 +3,188 @@ pragma solidity 0.8.17;
 
 import {BigNumbers, BigNumber} from "./BigNumbers.sol";
 import "Base64.sol";
+import "Entities.sol";
 
 contract VotingState {
 
-    Vote[] public votes;
-    BigNumber public hash;
-    string[] public logger;
+    // Configuration
     PaillierPublicKey public commonEncryptionKey;
-    string[] public candidates;
-    VotingState public state;
+    VotingPhase public state;
     string[] public voterQuestions;
+    string[] public candidates;
     RsaPublicKey[] public votersPublicKeys;
+
+    // Voting
+    Vote[] public votes;
+
+    // Result
     VotingResult public votingResult;
 
-//    Vote[] public votes;
+    address private bootnodeAddress;
 
+    string[] public logger;
 
-    enum VotingState {INITIALIZATION, VOTING, TALLYING}
-
-    struct VotingResult{
-        uint totalVotes;
-        uint[] votes;
+    constructor(address _bootnodeAddress) {
+        state = VotingPhase.INITIALIZATION;
+        bootnodeAddress = _bootnodeAddress;
     }
 
-    struct EncodedVote{
-        string ciphertext;
-        string exponent;
-    }
-
-    function publishVotingResults(VotingResult memory result) public {
-        // TODO assert
-        votingResult = result;
-    }
-
-    function retrieveVotingResults() public view returns (VotingResult memory) {
-        return votingResult;
-    }
-
-    function getAllVotes() public view returns (Vote[] memory) {
-        return votes;
-    }
+    // INITIALIZATION
 
     function initializeVoting(
         PaillierPublicKey memory key,
         string[] memory _candidates,
         string[] memory _voterQuestions,
         RsaPublicKey[] memory _votersPublicKeys
-    ) public {
+    ) onlyBootnode onInitialization public {
         // TODO assert bootnode
         commonEncryptionKey = key;
         candidates = _candidates;
         voterQuestions = _voterQuestions;
-//        votersPublicKeys = new RsaPublicKey[](_votersPublicKeys.length);
         for (uint i = 0; i < _votersPublicKeys.length; i++) {
             votersPublicKeys.push(_votersPublicKeys[i]);
         }
-        state = VotingState.VOTING;
+        state = VotingPhase.VOTING;
     }
 
-    function getCandidates() public view returns (string[] memory) {
+    // VOTING
+
+    function getCandidates() onVotingOrTallying  public view returns (string[] memory) {
         return candidates;
     }
 
-    function getVoterQuestions() public view returns (string[] memory) {
+    function getVoterQuestions() onVotingOrTallying public view returns (string[] memory) {
         return voterQuestions;
     }
 
-    function getVotersPublicKeyss() public view returns (RsaPublicKey[] memory) {
-        return votersPublicKeys;
+    function vote(Vote memory newVote) onVoting public {
+        require(newVote.encryptedVotes.length == candidates.length, "Invalid vote content length");
+        require(newVote.voterEncryptedAnswers.length == voterQuestions.length, "Invalid answers length");
+        require(newVote.encryptedVotes.length == newVote.encryptedExponents.length, "Invalid encrypted votes length");
+        votes.push(newVote);
     }
 
-    function getVotersPublicKey(uint id) public view returns (RsaPublicKey memory) {
-        return votersPublicKeys[id];
+    function changeStateToTallying() onVoting onlyBootnode public {
+        state = VotingPhase.TALLYING;
     }
 
-    struct PaillierPublicKey {
-        string n_base64;
-        string g_base64;
+    // TALLYING
+
+    function publishVotingResults(VotingResult memory result) public onlyBootnode onTallying {
+        // TODO assert
+        votingResult = result;
     }
 
-    struct RsaPublicKey {
-        string modulus_base64;
-        string exponent_base64;
+    function retrieveVotingResults() public view onTallying returns (VotingResult memory) {
+        return votingResult;
     }
 
-    struct RingSignature {
-//        keys: List<PublicKey>,
-        string startValue;
-        string[] ringValues;
-        string tag;
+    function getAllVotes() public view onTallying returns (Vote[] memory) {
+        return votes;
     }
 
-    struct Vote {
-        string[] encryptedVotes;
-        uint[] encryptedExponents;
-        string[] voterEncryptedAnswers;
-        RingSignature ringSignature;
+    // UTILS
+
+    modifier onlyBootnode() {
+        require(msg.sender == bootnodeAddress, "Only bootnode can call this function");
+        _;
     }
 
-    function validateRsaRingSignature(RingSignature memory ringSignature, string memory signedMessage) private {
-        BigNumber memory hash = cryptoHash(signedMessage);
-        logger.push("BASE64:");
-        logger.push(Base64.encode(hash.val, true, true));
-        logger.push(Base64.encode(hash.val, true, false));
-        logger.push(Base64.encode(hash.val, false, true));
-        logger.push(Base64.encode(hash.val, true, true));
-        bytes memory testBytes = xorByteArrays(hash.val, hash.val);
-        uint ringSize = ringSignature.ringValues.length;
-        logger.push("RING VERIFICATION");
-        for (uint i = 0; i < ringSize; i++) {
-            logger.push("RING VALUE");
-            logger.push(iToHex2(Base64.decode(ringSignature.ringValues[i])));
-//            BigNumber memory ringValue = BigNumbers.init(ringSignature.ringValues[i], false);
-//            hash = hash.add(ringValue);
-        }
+    modifier onInitialization() {
+        require(state == VotingPhase.INITIALIZATION, "This funtion may be called only on initialization");
+        _;
     }
 
-    function xorByteArrays(bytes memory arr1, bytes memory arr2) public pure returns (bytes memory) {
-        require(arr1.length == arr2.length, "Arrays must be of equal length");
-
-        bytes memory result = new bytes(arr1.length);
-
-        for (uint256 i = 0; i < arr1.length; i++) {
-            result[i] = arr1[i] ^ arr2[i];
-        }
-
-        return result;
+    modifier onVoting() {
+        require(state == VotingPhase.VOTING, "This funtion may be called only on voting");
+        _;
     }
 
-    function cryptoHash(string memory message) private returns (BigNumber memory) {
-        logger.push("bytes");
-        logger.push(message);
-        logger.push(Base64.encode(bytes(message), false, false));
-        logger.push(iToHex(sha256(bytes(message))));
-        logger.push(iToHex(sha256(bytes(message))));
-        logger.push(iToHex2(abi.encodePacked(sha256(bytes(message)))));
-        bytes memory hashBytes = abi.encodePacked(sha256(bytes(message)));
-        logger.push(Base64.encode(hashBytes, false, false));
-        return BigNumbers.init(hashBytes, false);
+    modifier onTallying() {
+        require(state == VotingPhase.TALLYING, "This funtion may be called only on tallying");
+        _;
     }
 
-    function iToHex2(bytes memory buffer) public pure returns (string memory) {
-
-        // Fixed buffer size for hexadecimal convertion
-        bytes memory converted = new bytes(buffer.length * 2);
-
-        bytes memory _base = "0123456789abcdef";
-
-        for (uint256 i = 0; i < buffer.length; i++) {
-            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
-            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
-        }
-
-        return string(abi.encodePacked("0x", converted));
+    modifier onVotingOrTallying() {
+        require(state == VotingPhase.VOTING || state == VotingPhase.TALLYING, "This funtion may be called only on voting");
+        _;
     }
 
 
-    function iToHex(bytes32 buffer) public pure returns (string memory) {
 
-        // Fixed buffer size for hexadecimal convertion
-        bytes memory converted = new bytes(buffer.length * 2);
 
-        bytes memory _base = "0123456789abcdef";
 
-        for (uint256 i = 0; i < buffer.length; i++) {
-            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
-            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
-        }
+//    function validateRsaRingSignature(RingSignature memory ringSignature, string memory signedMessage) private {
+//        BigNumber memory hash = cryptoHash(signedMessage);
+//        logger.push("BASE64:");
+//        logger.push(Base64.encode(hash.val, true, true));
+//        logger.push(Base64.encode(hash.val, true, false));
+//        logger.push(Base64.encode(hash.val, false, true));
+//        logger.push(Base64.encode(hash.val, true, true));
+//        bytes memory testBytes = xorByteArrays(hash.val, hash.val);
+//        uint ringSize = ringSignature.ringValues.length;
+//        logger.push("RING VERIFICATION");
+//        for (uint i = 0; i < ringSize; i++) {
+//            logger.push("RING VALUE");
+//            logger.push(iToHex2(Base64.decode(ringSignature.ringValues[i])));
+////            BigNumber memory ringValue = BigNumbers.init(ringSignature.ringValues[i], false);
+////            hash = hash.add(ringValue);
+//        }
+//    }
 
-        return string(abi.encodePacked("0x", converted));
-    }
+//    function xorByteArrays(bytes memory arr1, bytes memory arr2) public pure returns (bytes memory) {
+//        require(arr1.length == arr2.length, "Arrays must be of equal length");
+//
+//        bytes memory result = new bytes(arr1.length);
+//
+//        for (uint256 i = 0; i < arr1.length; i++) {
+//            result[i] = arr1[i] ^ arr2[i];
+//        }
+//
+//        return result;
+//    }
+
+//    function cryptoHash(string memory message) private returns (BigNumber memory) {
+//        logger.push("bytes");
+//        logger.push(message);
+//        logger.push(Base64.encode(bytes(message), false, false));
+//        logger.push(iToHex(sha256(bytes(message))));
+//        logger.push(iToHex(sha256(bytes(message))));
+//        logger.push(iToHex2(abi.encodePacked(sha256(bytes(message)))));
+//        bytes memory hashBytes = abi.encodePacked(sha256(bytes(message)));
+//        logger.push(Base64.encode(hashBytes, false, false));
+//        return BigNumbers.init(hashBytes, false);
+//    }
+
+//    function iToHex2(bytes memory buffer) public pure returns (string memory) {
+//
+//        // Fixed buffer size for hexadecimal convertion
+//        bytes memory converted = new bytes(buffer.length * 2);
+//
+//        bytes memory _base = "0123456789abcdef";
+//
+//        for (uint256 i = 0; i < buffer.length; i++) {
+//            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
+//            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
+//        }
+//
+//        return string(abi.encodePacked("0x", converted));
+//    }
+
+//    function iToHex(bytes32 buffer) public pure returns (string memory) {
+//
+//        // Fixed buffer size for hexadecimal convertion
+//        bytes memory converted = new bytes(buffer.length * 2);
+//
+//        bytes memory _base = "0123456789abcdef";
+//
+//        for (uint256 i = 0; i < buffer.length; i++) {
+//            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
+//            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
+//        }
+//
+//        return string(abi.encodePacked("0x", converted));
+//    }
 
 //    function addVote(Vote memory vote) public {
 //        votes.push(vote);
@@ -182,23 +194,12 @@ contract VotingState {
 //        return votes;
 //    }
 
-    function testBigNumbers() public {
-    }
+//    function getLogs() public view returns (string[] memory){
+//        return logger;
+//    }
 
-    function vote(Vote memory newVote) public {
-        require(newVote.encryptedVotes.length == candidates.length, "Invalid vote content length");
-        require(newVote.voterEncryptedAnswers.length == voterQuestions.length, "Invalid answers length");
-        require(newVote.encryptedVotes.length == newVote.encryptedExponents.length, "Invalid encrypted votes length");
-//        validateRsaRingSignature(newVote.ringSignature, newVote.candidate);
-        votes.push(newVote);
-    }
-
-    function getLogs() public view returns (string[] memory){
-        return logger;
-    }
-
-    function clearLogs() public {
-        logger = new string[](0);
-    }
+//    function clearLogs() public {
+//        logger = new string[](0);
+//    }
 
 }

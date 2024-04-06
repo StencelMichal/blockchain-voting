@@ -3,12 +3,14 @@ package com.stencel.evoting.voter.cli.command
 import com.n1analytics.paillier.PaillierPublicKey
 import com.stencel.evoting.smartcontracts.VotingState
 import com.stencel.evoting.smartcontracts.ringSignature.RingSignature
-import com.stencel.evoting.smartcontracts.service.VotingStateManagerService
 import com.stencel.evoting.smartcontracts.util.CryptographyUtils
+import com.stencel.evoting.voter.service.ContractAddressResolverService
 import com.stencel.evoting.voter.service.VotingService
 import org.springframework.stereotype.Component
 import org.web3j.crypto.Credentials
+import org.web3j.protocol.Web3j
 import org.web3j.tuples.generated.Tuple2
+import org.web3j.tx.gas.ContractGasProvider
 import picocli.CommandLine
 import java.math.BigInteger
 import java.security.KeyFactory
@@ -16,7 +18,6 @@ import java.security.KeyPair
 import java.security.PublicKey
 import java.security.spec.RSAPublicKeySpec
 import java.util.*
-import java.util.concurrent.Callable
 
 @Component
 @CommandLine.Command(
@@ -25,8 +26,10 @@ import java.util.concurrent.Callable
 )
 class VoteCommand(
     private val votingService: VotingService,
-    private val votingStateManagerService: VotingStateManagerService
-) : Callable<Int> {
+    private val contractAddressResolverService: ContractAddressResolverService,
+    private val web3j: Web3j,
+    private val gasProvider: ContractGasProvider
+) : Command() {
 
     @CommandLine.Option(names = ["--id"], required = false, description = ["Identifier of voting"])
     private var votingIdentifier: String = "test"
@@ -37,18 +40,31 @@ class VoteCommand(
     @CommandLine.Option(names = ["--signatureSize"], required = false, description = ["Size of ring signature"])
     private var signatureSize: Int = 3
 
-    override fun call(): Int {
-        Credentials.create(privateKey)
-        val votingStateContract = votingStateManagerService.contract
-        val encryptionKey = getEncryptionKey(votingStateContract)
-        val voterQuestions = votingStateContract.voterQuestions.send() as List<String>
-        val candidates = votingStateContract.candidates.send() as List<String>
-        val candidateIndex = selectCandidate(candidates)
-        val voterAnswers = collectAnswers(voterQuestions)
-        val vote = createVote(votingStateContract, candidateIndex, candidates.size, encryptionKey, voterAnswers)
-        votingService.vote(votingIdentifier, privateKey, vote)
-        return 0
+    override fun execute() {
+        resolveContractAndPerform(votingIdentifier, privateKey) { votingStateContract ->
+            Credentials.create(privateKey)
+            val encryptionKey = getEncryptionKey(votingStateContract)
+            val voterQuestions = votingStateContract.voterQuestions.send() as List<String>
+            val candidates = votingStateContract.candidates.send() as List<String>
+            val candidateIndex = selectCandidate(candidates)
+            val voterAnswers = collectAnswers(voterQuestions)
+            val vote = createVote(votingStateContract, candidateIndex, candidates.size, encryptionKey, voterAnswers)
+            votingService.vote(votingStateContract, vote)
+        }
     }
+
+    private fun <T> resolveContractAndPerform(
+        votingIdentifier: String,
+        blockchainPrivateKey: String,
+        action: (VotingState) -> T,
+    ): T? {
+        val credentials = Credentials.create(blockchainPrivateKey)
+        return contractAddressResolverService.resolveContractAddress(votingIdentifier)?.let { address ->
+            val contract = VotingState.load(address, web3j, credentials, gasProvider)
+            action(contract)
+        }
+    }
+
 
     private fun getEncryptionKey(contract: VotingState): PaillierPublicKey {
         val commonEncryptionKey = contract.commonEncryptionKey().send()
@@ -80,7 +96,7 @@ class VoteCommand(
         candidateIndex: Int,
         candidatesAmount: Int,
         commonEncryptionKey: PaillierPublicKey,
-        voterAnswers: List<Int>
+        voterAnswers: List<Int>,
     ): VotingState.Vote {
         val (encodedCiphertexts, encodedExponents) = encodeCandidate(
             candidateIndex,
@@ -113,7 +129,7 @@ class VoteCommand(
     private fun encodeCandidate(
         candidateIndex: Int,
         candidatesAmount: Int,
-        commonEncryptionKey: PaillierPublicKey
+        commonEncryptionKey: PaillierPublicKey,
     ): Tuple2<List<String>, List<BigInteger>> {
         val encodedVote = Array(candidatesAmount) { 0 }
         encodedVote[candidateIndex] = 1
