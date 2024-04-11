@@ -25,6 +25,8 @@ pragma solidity ^0.8.0;
 
     struct RingSignature {
         string startValue;
+        string[] moduluses_base64;
+        string[] exponents_base64;
         string[] ringValues;
         string tag;
     }

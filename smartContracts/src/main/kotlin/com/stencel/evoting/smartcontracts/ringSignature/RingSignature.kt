@@ -10,7 +10,7 @@ data class RingSignature(
     val keys: List<PublicKey>,
     val startValue: BigInteger,
     val ringValues: List<BigInteger>,
-    val tag: BigInteger
+    val tag: BigInteger,
 ) {
     val size = keys.size
 
@@ -23,6 +23,12 @@ data class RingSignature(
     fun toDto(): VotingState.RingSignature {
         return VotingState.RingSignature(
             encoder.encodeToString(startValue.toByteArray()),
+            keys.map { it as java.security.interfaces.RSAPublicKey }.map {
+                encoder.encodeToString(it.modulus.toByteArray())
+            },
+            keys.map { it as java.security.interfaces.RSAPublicKey }.map {
+                encoder.encodeToString(it.publicExponent.toByteArray())
+            },
             ringValues.map { encoder.encodeToString(it.toByteArray()) },
             encoder.encodeToString(tag.toByteArray())
         )

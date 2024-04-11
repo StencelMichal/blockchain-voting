@@ -4,6 +4,7 @@ import com.n1analytics.paillier.PaillierPublicKey
 import com.stencel.evoting.smartcontracts.VotingState
 import com.stencel.evoting.smartcontracts.ringSignature.RingSignature
 import com.stencel.evoting.smartcontracts.util.CryptographyUtils
+import com.stencel.evoting.smartcontracts.util.VoteContent
 import com.stencel.evoting.voter.service.ContractAddressResolverService
 import com.stencel.evoting.voter.service.VotingService
 import org.springframework.stereotype.Component
@@ -16,6 +17,7 @@ import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.PublicKey
+import java.security.spec.RSAPrivateKeySpec
 import java.security.spec.RSAPublicKeySpec
 import java.util.*
 
@@ -28,7 +30,7 @@ class VoteCommand(
     private val votingService: VotingService,
     private val contractAddressResolverService: ContractAddressResolverService,
     private val web3j: Web3j,
-    private val gasProvider: ContractGasProvider
+    private val gasProvider: ContractGasProvider,
 ) : Command() {
 
     @CommandLine.Option(names = ["--id"], required = false, description = ["Identifier of voting"])
@@ -40,6 +42,27 @@ class VoteCommand(
     @CommandLine.Option(names = ["--signatureSize"], required = false, description = ["Size of ring signature"])
     private var signatureSize: Int = 3
 
+    @CommandLine.Option(names = ["--modulus"], required = false, description = ["Modulus of voters key"])
+    private var modulus =
+        "AMuxTWVy2eqWLzVJMl5QPBNIURiaG/7nT9HLt3RnTbMmk5WwwCtnHwtfNTTNv4l28ZNTUsE/YMXNA49gymRQyGahDNPW2o8qYBROmOFGqNgOsFeDcFDqWqI1n+UZM4vlimA+dDh5Co/2dKZQ3+4cc96ca2VvcSPwG1i8LxzFX5UwyFI1i9Ai6m6G55ikOepUIpPcLuJ15FYrzt52JaNNuqDCoxgJ9jnsNqsrpA9rhVoeDwGjcnt9+UYmOOx0N+jykkh1kvjEd/Z+wLf5y3SMb/f9Gw4fbbN1Sg6243QuHqYV2xgarmphoDgGkMOmr49whBs+RgofVXAAilV8lDcUXe8="
+
+    @CommandLine.Option(
+        names = ["--publicExponent"],
+        required = false,
+        description = ["Public exponent of voter's key"]
+    )
+    private var publicExponent = "AQAB"
+
+    @CommandLine.Option(
+        names = ["--privateExponent"],
+        required = false,
+        description = ["Private exponent of voter's key"]
+    )
+    private var privateExponent =
+        "CqDELIxrEWHnsayRi7k9ATaPQKzd1BWGpSgveMvhEn1rSu6vgDQ/uuyrToeDvGzv2uOImFuxtXBmhKckuEo8wpoZnL4Dpl+sJrMZJ/vzWF6f1dkeVaJ8uyT4JFCFz4FZEH+Bueaa5fsSiBEFNhvW8eEQe3jumtTu4FjlTmd//r02dWpAhqCgZpUgTJxAOh5jvukwgiI55sHuGhIO3czWbXyCyzYZ+hd1YwSW7jNtCBVlFRvhCjm1AIBeLjHDFGG/I7L22O+BZLpVFyDA4zXMItBgJZzmnqxVadyT4rzV7PcwGsO4FvEgof0fIm2g4fp1xJfoi1+UTpSJPWSQwb+lqQ=="
+
+    private val decoder = Base64.getDecoder()
+
     override fun execute() {
         resolveContractAndPerform(votingIdentifier, privateKey) { votingStateContract ->
             Credentials.create(privateKey)
@@ -48,8 +71,21 @@ class VoteCommand(
             val candidates = votingStateContract.candidates.send() as List<String>
             val candidateIndex = selectCandidate(candidates)
             val voterAnswers = collectAnswers(voterQuestions)
-            val vote = createVote(votingStateContract, candidateIndex, candidates.size, encryptionKey, voterAnswers)
+            val voterKeyPair = reconstructKeyPair(
+                BigInteger(decoder.decode(modulus)),
+                BigInteger(decoder.decode(privateExponent)),
+                BigInteger(decoder.decode(publicExponent))
+            )
+            val vote = createVote(
+                voterKeyPair,
+                votingStateContract,
+                candidateIndex,
+                candidates.size,
+                encryptionKey,
+                voterAnswers
+            )
             votingService.vote(votingStateContract, vote)
+            println("Vote has been cast and awaits validation")
         }
     }
 
@@ -63,6 +99,19 @@ class VoteCommand(
             val contract = VotingState.load(address, web3j, credentials, gasProvider)
             action(contract)
         }
+    }
+
+    private fun reconstructKeyPair(
+        modulus: BigInteger,
+        privateExponent: BigInteger,
+        publicExponent: BigInteger,
+    ): KeyPair {
+        val publicKeySpec = RSAPublicKeySpec(modulus, publicExponent)
+        val privateKeySpec = RSAPrivateKeySpec(modulus, privateExponent)
+        val keyFactory = KeyFactory.getInstance("RSA")
+        val publicKey = keyFactory.generatePublic(publicKeySpec)
+        val privateKey = keyFactory.generatePrivate(privateKeySpec)
+        return KeyPair(publicKey, privateKey)
     }
 
 
@@ -92,6 +141,7 @@ class VoteCommand(
     }
 
     private fun createVote(
+        keyPair: KeyPair,
         votingStateContract: VotingState,
         candidateIndex: Int,
         candidatesAmount: Int,
@@ -105,7 +155,6 @@ class VoteCommand(
         )
         val encodedAnswers = encodeVoterAnswers(voterAnswers, commonEncryptionKey)
         val decoder = Base64.getDecoder()
-        val keyPair = CryptographyUtils.generateRsaKeyPair()
         val publicKeys =
             List(signatureSize) { id ->
                 votingStateContract.votersPublicKeys(BigInteger.valueOf(id.toLong())).send()
@@ -117,7 +166,13 @@ class VoteCommand(
                 val keyFactory: KeyFactory = KeyFactory.getInstance("RSA")
                 keyFactory.generatePublic(keySpec)
             }
-        val ringSignature = createVoteSignature(keyPair, publicKeys)
+        val ringSignature = createVoteSignature(
+            encodedCiphertexts,
+            encodedExponents,
+            encodedAnswers,
+            keyPair,
+            publicKeys
+        )
         return VotingState.Vote(
             encodedCiphertexts,
             encodedExponents,
@@ -145,10 +200,16 @@ class VoteCommand(
         return answers.map { paillierSignedContext.encrypt(it.toLong()).calculateCiphertext().toString() }
     }
 
-    private fun createVoteSignature(keyPair: KeyPair, publicKeys: List<PublicKey>): RingSignature {
-        //TODO change message to vote content
+    private fun createVoteSignature(
+        encryptedVotes: List<String>,
+        encryptedExponents: List<BigInteger>,
+        voterEncryptedAnswers: List<String>,
+        keyPair: KeyPair,
+        publicKeys: List<PublicKey>,
+    ): RingSignature {
+        val content = VoteContent(encryptedVotes, encryptedExponents, voterEncryptedAnswers).toJson()
         return RingSignature.create(
-            "Message",
+            content,
             keyPair,
             publicKeys
         )

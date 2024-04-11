@@ -26,7 +26,7 @@ dependencies {
     implementation(project(":smartContracts"))
 
     // web3j
-    implementation("org.web3j:core:5.0.0")
+    implementation("org.web3j:core:4.11.0")
     implementation("org.web3j:abi:4.11.0")
 //    implementation("org.web3j:codegen:5.0.0")
 //    implementation("org.web3j:crypto:5.0.0")

@@ -15,7 +15,10 @@ contract VotingState {
     RsaPublicKey[] public votersPublicKeys;
 
     // Voting
-    Vote[] public votes;
+    string[] public awaitingValidationVotesTags;
+    mapping(string => Vote) public awaitingValidationVotesQueue;
+    Vote[] public validatedVotes;
+    Vote[] public invalidVotes;
 
     // Result
     VotingResult public votingResult;
@@ -49,7 +52,7 @@ contract VotingState {
 
     // VOTING
 
-    function getCandidates() onVotingOrTallying  public view returns (string[] memory) {
+    function getCandidates() onVotingOrTallying public view returns (string[] memory) {
         return candidates;
     }
 
@@ -61,11 +64,40 @@ contract VotingState {
         require(newVote.encryptedVotes.length == candidates.length, "Invalid vote content length");
         require(newVote.voterEncryptedAnswers.length == voterQuestions.length, "Invalid answers length");
         require(newVote.encryptedVotes.length == newVote.encryptedExponents.length, "Invalid encrypted votes length");
-        votes.push(newVote);
+        string memory tag = newVote.ringSignature.tag;
+        awaitingValidationVotesTags.push(tag);
+        awaitingValidationVotesQueue[tag] = newVote;
+    }
+
+    function getVoteAwaitingForValidation() onVoting public view returns (Vote memory) {
+        string memory tag = awaitingValidationVotesTags[0];
+        return awaitingValidationVotesQueue[tag];
+    }
+
+    function confirmVoteValidity(Vote memory validatedVote) onVoting public {
+        //TODO add sealerAddress
+        validatedVotes.push(validatedVote);
+        removeVoteFromQueue(validatedVote.ringSignature.tag);
+    }
+
+    function invalidateVote(Vote memory invalidVote) onVoting public {
+        invalidVotes.push(invalidVote);
+        removeVoteFromQueue(invalidVote.ringSignature.tag);
     }
 
     function changeStateToTallying() onVoting onlyBootnode public {
         state = VotingPhase.TALLYING;
+    }
+
+    function removeVoteFromQueue(string memory tag) onVoting private {
+        for (uint i = 0; i < awaitingValidationVotesTags.length; i++) {
+            string memory currentTag = awaitingValidationVotesTags[i];
+            if (keccak256(bytes(currentTag)) == keccak256(bytes(tag))) {
+                awaitingValidationVotesTags[i] = awaitingValidationVotesTags[awaitingValidationVotesTags.length - 1];
+                awaitingValidationVotesTags.pop();
+                return;
+            }
+        }
     }
 
     // TALLYING
@@ -80,7 +112,7 @@ contract VotingState {
     }
 
     function getAllVotes() public view onTallying returns (Vote[] memory) {
-        return votes;
+        return validatedVotes;
     }
 
     // UTILS
@@ -109,10 +141,6 @@ contract VotingState {
         require(state == VotingPhase.VOTING || state == VotingPhase.TALLYING, "This funtion may be called only on voting");
         _;
     }
-
-
-
-
 
 //    function validateRsaRingSignature(RingSignature memory ringSignature, string memory signedMessage) private {
 //        BigNumber memory hash = cryptoHash(signedMessage);
