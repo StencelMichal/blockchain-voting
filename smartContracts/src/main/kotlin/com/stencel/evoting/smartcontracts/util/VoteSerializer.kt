@@ -7,6 +7,7 @@ data class VoteContent(
     val encryptedVotes: List<String>,
     val encryptedExponents: List<BigInteger>,
     val voterEncryptedAnswers: List<String>,
+    val encodedAnswersExponents: List<BigInteger>,
 ) {
     private val mapper = ObjectMapper()
 

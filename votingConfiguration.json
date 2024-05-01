@@ -1,13 +1,13 @@
 {
   "candidates": [
-    "Kandydat 1",
-    "Kandydat 2",
-    "Kandydat 3"
+    "Jan Kowalski",
+    "Joanna Woźniak",
+    "Adam Nowak"
   ],
   "voterQuestions": [
-    "Pytanie 1",
-    "Pytanie 2",
-    "Pytanie 3"
+    "Czy jesteś mieszkańcem miasta powyżej 50 tys. mieszkańców ?",
+    "Czy posiadasz wyższe wykształcenie ?",
+    "Czy twoje średnie zarobki przekraczają 8 tys. zł ?"
   ],
   "votersPublicKeys": [
     {
@@ -90,5 +90,25 @@
       "modulus_base64": "AN3BLfzCY3IrziWkhVojrfIgt1vJcWqrS4450fMcsqduP/gdmyjYgyvqb8M3IVTqCqz2V+KqEqBLhDEJXXyPegraDJ49gRtMruEDcVS1dHsatqZb+O96OvJre3tB6n5evkVyRmxe3mfcb/MMydADvgCfwsXhbcVP/C7uGFZNHgsB61YpE1lzC/oo9w6BSgbpnshOdu/dqMMlDNY14wr0vPTWJe0UGk50WgOCpo2yMajf5vF8zQkg16MzPtfE2yTWhJc3dcqhvgMLYUETn3PuigANgZO425V+yFY9qPR+XbN9jQ3w7aMC9YTUc35ISrQ26vnqsBBZsfQhKoAzfmk1DH0=",
       "exponent_base64": "AQAB"
     }
-  ]
+  ],
+  "addresses": {
+    "sealers": [
+      "0x266CBC14eF84d2E6bca5c7343cedE79Cd09989aD",
+      "0x7a06B5cBEfa497149F1e948b388E5b532F620b00",
+      "0xfF9D344087325561A4E62e3ccA8aC639461c6257",
+      "0x53a9429057AF7b85E9910640C9cA1bee85A05FeA"
+    ],
+    "voters": [
+      "0x418DC47e7C49C38427Dfd0051Ee58D54c9EEB3D2",
+      "0xDD8f4616c7e07a87C68F7De47882E0D6c522d3A5",
+      "0x22cB33dF0C0A0e7569DACef21D3eDF9B5cDf652e",
+      "0xE2fCB31b8788bcf8160Ff4d4F7eD58D8E1F6BB28",
+      "0xc50412456716094Cfe734fBb9b1D84d1171f22c9",
+      "0x4C446d0dB2BB3BB8DaE96515ca4afF9CF4a6f1E0",
+      "0xF98C4D29e443761992C586dff386c843adb95fAe",
+      "0xCA3541Cd8152e5DfCD8deD593c56aDb86d3bf378",
+      "0x5561793a2e56f84F74c0EAB7cBd97b0CC75644Fc",
+      "0x4da607579a9bbD61F62Df34B50aA8883096b1d6b"
+    ]
+  }
 }

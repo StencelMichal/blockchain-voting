@@ -19,6 +19,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven(url = "https://artifacts.consensys.net/public/maven/maven/")
 }
 
 dependencies {
@@ -28,31 +29,17 @@ dependencies {
     // web3j
     implementation("org.web3j:core:4.11.0")
     implementation("org.web3j:abi:4.11.0")
-//    implementation("org.web3j:codegen:5.0.0")
-//    implementation("org.web3j:crypto:5.0.0")
-//    implementation("org.web3j:utils:5.0.0")
-//    implementation("org.web3j:rlp:5.0.0")
-
-
-//    implementation("org.web3j:web3j-gradle-plugin:4.6.0")
 
 //    implementation("org.bouncycastle:bcprov-jdk16:1.46")
 
     // pailier ecrpytion
     implementation("com.n1analytics:javallier_2.10:0.6.0")
 
-
-
     //lombok
     compileOnly("org.projectlombok:lombok:1.18.32")
 
     // spring
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-
-    // database
-    implementation("org.postgresql:postgresql")
-
 
     // serialization
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")

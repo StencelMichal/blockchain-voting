@@ -1,0 +1,1 @@
+docker compose --file docker/bootnode/docker-compose.yaml run --service-ports app

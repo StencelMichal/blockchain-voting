@@ -17,8 +17,8 @@ class VoteValidatorDaemon(
             try {
                 val voteToValidate = contract.voteAwaitingForValidation.send()
                 validateVote(voteToValidate, contract)
-            } catch (_: Exception) {
-                // Swallow exception
+            } catch (e: Exception) {
+                 println("Error during validation: ${e.message}")
             }
         }
     }
@@ -26,6 +26,7 @@ class VoteValidatorDaemon(
     private fun validateVote(vote: VotingState.Vote, contract: VotingState) {
         try {
             val validationResult = voteValidatorService.validateVote(vote)
+            println("Validation result: $validationResult")
             if (validationResult) {
                 contract.confirmVoteValidity(vote).send()
             } else {

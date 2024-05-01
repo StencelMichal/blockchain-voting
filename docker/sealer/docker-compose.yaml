@@ -1,0 +1,25 @@
+version: "3"
+services:
+
+  sealer-besu:
+    image: hyperledger/besu:latest
+    container_name: "node-${NODE_NO}"
+    volumes:
+      - ./sealer-${NODE_NO}:/usr/app/
+    command: --config-file=/usr/app/config.toml
+#    ports:
+#      - "0"
+#    ports:
+#      - "${RPC_HTTP_PORT}:${RPC_HTTP_PORT}"
+#      - "${P2P_PORT}:${P2P_PORT}"
+    network_mode: host
+
+  sealer-app:
+    image: blockchain-evoting/sealer:latest
+    container_name: "sealer-app-${NODE_NO}"
+    environment:
+        CREDENTIALS: "${CREDENTIALS}"
+        VOTING_IDENTIFIER: "${VOTING_IDENTIFIER}"
+
+volumes:
+  .:

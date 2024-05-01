@@ -13,7 +13,7 @@ import java.security.spec.RSAPublicKeySpec
 import java.util.*
 
 @Service
-class VoteValidatorService{
+class VoteValidatorService {
 
     private val base64Decoder = Base64.getDecoder()
     val rsaKeyFactory = KeyFactory.getInstance("RSA")
@@ -21,7 +21,12 @@ class VoteValidatorService{
     fun validateVote(vote: VotingState.Vote): Boolean {
         try {
             val signature = toRingSignature(vote.ringSignature)
-            val voteContent = VoteContent(vote.encryptedVotes, vote.encryptedExponents, vote.voterEncryptedAnswers).toJson()
+            val voteContent = VoteContent(
+                vote.encryptedVotes,
+                vote.encryptedExponents,
+                vote.voterEncryptedAnswers,
+                vote.encodedAnswersExponents
+            ).toJson()
             return signature.verify(voteContent)
         } catch (e: Exception) {
             throw VoteValidationException("Vote validation failed")

@@ -35,5 +35,6 @@ pragma solidity ^0.8.0;
         string[] encryptedVotes;
         uint[] encryptedExponents;
         string[] voterEncryptedAnswers;
+        uint[] encodedAnswersExponents;
         RingSignature ringSignature;
     }

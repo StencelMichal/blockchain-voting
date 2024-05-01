@@ -24,7 +24,8 @@ import java.util.*
 @Component
 @CommandLine.Command(
     name = "vote",
-    description = ["Vote for a candidate"]
+    description = ["Vote for a candidate"],
+    mixinStandardHelpOptions = true
 )
 class VoteCommand(
     private val votingService: VotingService,
@@ -129,15 +130,22 @@ class VoteCommand(
     }
 
     private fun collectAnswers(questions: List<String>): List<Int> {
-        return questions.fold(listOf()) { answers, question ->
-            println(question)
-            var binaryAnswer = readln().toInt()
-            while (binaryAnswer != 1 && binaryAnswer != 0) {
-                println("Invalid answer. Please enter 0 or 1.")
-                binaryAnswer = readln().toInt()
-            }
+        return questions.foldIndexed(listOf()) { id, answers, question ->
+            println("Question ${id + 1}: $question [YES/NO]")
+            val answer = getAnswer()
+            val binaryAnswer = if (answer) 1 else 0
             answers + binaryAnswer
         }
+    }
+
+    private fun getAnswer(): Boolean {
+        while (true) {
+            val answer = readln().uppercase()
+            if (answer == "YES") return true
+            if (answer == "NO") return false
+            println("Invalid answer. Please enter YES or NO.")
+        }
+
     }
 
     private fun createVote(
@@ -153,7 +161,7 @@ class VoteCommand(
             candidatesAmount,
             commonEncryptionKey
         )
-        val encodedAnswers = encodeVoterAnswers(voterAnswers, commonEncryptionKey)
+        val (encodedAnswers, encodedAnswersExponents) = encodeVoterAnswers(voterAnswers, commonEncryptionKey)
         val decoder = Base64.getDecoder()
         val publicKeys =
             List(signatureSize) { id ->
@@ -170,6 +178,7 @@ class VoteCommand(
             encodedCiphertexts,
             encodedExponents,
             encodedAnswers,
+            encodedAnswersExponents,
             keyPair,
             publicKeys
         )
@@ -177,6 +186,7 @@ class VoteCommand(
             encodedCiphertexts,
             encodedExponents,
             encodedAnswers,
+            encodedAnswersExponents,
             ringSignature.toDto()
         )
     }
@@ -195,19 +205,27 @@ class VoteCommand(
         return Tuple2(ciphertexts, exponents)
     }
 
-    private fun encodeVoterAnswers(answers: List<Int>, commonEncryptionKey: PaillierPublicKey): List<String> {
+    private fun encodeVoterAnswers(
+        answers: List<Int>,
+        commonEncryptionKey: PaillierPublicKey
+    ): Tuple2<List<String>, List<BigInteger>> {
         val paillierSignedContext = commonEncryptionKey.createSignedContext()
-        return answers.map { paillierSignedContext.encrypt(it.toLong()).calculateCiphertext().toString() }
+        val encryptedValues = answers.map { paillierSignedContext.encrypt(it.toLong()) }
+        val encryptedAnswers = encryptedValues.map { it.calculateCiphertext().toString() }
+        val exponents = encryptedValues.map { it.exponent.toBigInteger() }
+        return Tuple2(encryptedAnswers, exponents)
     }
 
     private fun createVoteSignature(
         encryptedVotes: List<String>,
         encryptedExponents: List<BigInteger>,
         voterEncryptedAnswers: List<String>,
+        encodedAnswersExponents: List<BigInteger>,
         keyPair: KeyPair,
         publicKeys: List<PublicKey>,
     ): RingSignature {
-        val content = VoteContent(encryptedVotes, encryptedExponents, voterEncryptedAnswers).toJson()
+        val content =
+            VoteContent(encryptedVotes, encryptedExponents, voterEncryptedAnswers, encodedAnswersExponents).toJson()
         return RingSignature.create(
             content,
             keyPair,

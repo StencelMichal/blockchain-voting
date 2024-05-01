@@ -3,10 +3,8 @@ package com.stencel.evoting.sealer
 import com.stencel.evoting.sealer.daemon.VoteValidatorDaemon
 import com.stencel.evoting.smartcontracts.VotingState
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.domain.EntityScan
 import org.springframework.boot.runApplication
 import org.springframework.context.ConfigurableApplicationContext
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.client.RestTemplate
 import org.web3j.crypto.Credentials
@@ -16,16 +14,24 @@ import kotlin.system.exitProcess
 
 
 @SpringBootApplication(scanBasePackages = ["com.stencel.evoting.sealer", "com.stencel.evoting.smartcontracts"])
-@EntityScan(basePackages = ["com.stencel.evoting.smartcontracts.database"])
-@EnableJpaRepositories("com.stencel.evoting.smartcontracts.database")
 @EnableScheduling
 class SealerApplication
 
 fun main(args: Array<String>) {
-    val springContext = runApplication<SealerApplication>(*args)
-    val credentials = getPrivateKey()
-    val votingIdentifier = getVotingIdentifier()
-    val contract = getContract(springContext, votingIdentifier, credentials)
+    val credentialsStr = System.getenv("CREDENTIALS")
+    val votingIdentifier = System.getenv("VOTING_IDENTIFIER")
+
+    if (credentialsStr.isNullOrBlank() || votingIdentifier.isNullOrBlank()) {
+        println("Missing credentials or identifier in environment variables.")
+        return
+    }
+
+    val contractAddress = getContractAddress(votingIdentifier)
+
+    val credentials = Credentials.create(credentialsStr)
+    val springContext = runApplication<SealerApplication>(*args.drop(2).toTypedArray())
+
+    val contract = loadContract(springContext, credentials, contractAddress)
     VoteValidatorDaemon.contractOpt = contract
 }
 
@@ -50,12 +56,11 @@ private fun getVotingIdentifier(): String {
     }
 }
 
-private fun getContract(
+private fun loadContract(
     springContext: ConfigurableApplicationContext,
-    votingIdentifier: String,
     credentials: Credentials,
+    contractAddress: String
 ): VotingState {
-    val contractAddress = getContractAddress(votingIdentifier)
     val web3j = springContext.beanFactory.getBean(Web3j::class.java)
     val gasProvider = springContext.beanFactory.getBean(ContractGasProvider::class.java)
     return VotingState.load(
@@ -67,7 +72,17 @@ private fun getContract(
 }
 
 private fun getContractAddress(votingIdentifier: String): String {
-    val baseUrl = "http://localhost:8081/contractAddress"
-    val url = "$baseUrl?votingIdentifier=$votingIdentifier"
-    return RestTemplate().getForObject(url, String::class.java) as String
+    var address: String? = null
+    while (address == null) {
+        try {
+            val baseUrl = "http://host.docker.internal:8081/contractAddress"
+            val url = "$baseUrl?votingIdentifier=$votingIdentifier"
+            address = RestTemplate().getForObject(url, String::class.java) as String
+            println("Contract address: $address")
+        } catch (e: Exception) {
+            println("Cannot get contract address. Retrying... error: ${e.message}")
+        }
+        Thread.sleep(1000)
+    }
+    return address
 }

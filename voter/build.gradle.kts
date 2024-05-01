@@ -17,6 +17,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven(url = "https://artifacts.consensys.net/public/maven/maven/")
 }
 
 dependencies {
@@ -34,13 +35,8 @@ dependencies {
     implementation("org.web3j:core:4.11.0")
     implementation("org.web3j:abi:4.11.0")
 
-    // database
-    implementation("org.postgresql:postgresql")
-
     // spring
-    implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
     // TEST
     testImplementation("org.springframework.boot:spring-boot-starter-test")

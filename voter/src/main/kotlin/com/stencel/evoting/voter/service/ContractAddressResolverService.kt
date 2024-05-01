@@ -7,7 +7,7 @@ import org.springframework.web.client.RestTemplate
 @Service
 class ContractAddressResolverService {
 
-    private val baseUrl = "http://localhost:8081/contractAddress"
+    private val baseUrl = "http://host.docker.internal:8081/contractAddress"
     private val restTemplate = RestTemplate()
 
     fun resolveContractAddress(votingIdentifier: String): String? {

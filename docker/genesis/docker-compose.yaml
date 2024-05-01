@@ -1,7 +1,7 @@
 services:
   reltime_node:
     image: hyperledger/besu:latest
-    container_name: "bootnode"
+    container_name: "genesis-creator"
     volumes:
       - .:/usr/app/
     command: operator generate-blockchain-config --config-file=/usr/app/ibftConfigFile.json --to=/usr/app/networkFiles --private-key-file-name=key

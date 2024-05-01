@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
     id("org.springframework.boot") version "3.2.3"
@@ -6,7 +7,6 @@ plugins {
     kotlin("jvm") version "1.9.22"
     id("java")
     kotlin("plugin.spring") version "1.9.22"
-//    id("org.web3j") version "4.11.0"
     kotlin("plugin.noarg") version "1.9.23"
 }
 
@@ -19,6 +19,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven(url = "https://artifacts.consensys.net/public/maven/maven/")
 }
 
 dependencies {
@@ -33,21 +34,13 @@ dependencies {
     // pailier ecrpytion
     implementation("com.n1analytics:javallier_2.10:0.6.0")
 
-
-
     //lombok
     compileOnly("org.projectlombok:lombok:1.18.32")
 
-    // spring
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-
-    // database
-    implementation("org.postgresql:postgresql")
-
-
     // serialization
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+
+    implementation("org.springframework.boot:spring-boot-starter-web")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
@@ -57,6 +50,10 @@ dependencies {
 
 noArg {
     annotation("jakarta.persistence.Entity")
+}
+
+tasks.named<BootJar>("bootJar") {
+    enabled = false
 }
 
 tasks.withType<KotlinCompile> {

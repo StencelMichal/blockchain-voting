@@ -24,6 +24,8 @@ contract VotingState {
     VotingResult public votingResult;
 
     address private bootnodeAddress;
+    mapping(address => bool) private sealersAddresses;
+    mapping(address => bool) private votersAddresses;
 
     string[] public logger;
 
@@ -38,7 +40,9 @@ contract VotingState {
         PaillierPublicKey memory key,
         string[] memory _candidates,
         string[] memory _voterQuestions,
-        RsaPublicKey[] memory _votersPublicKeys
+        RsaPublicKey[] memory _votersPublicKeys,
+        address[] memory _sealersAddresses,
+        address[] memory _votersAddresses
     ) onlyBootnode onInitialization public {
         // TODO assert bootnode
         commonEncryptionKey = key;
@@ -46,6 +50,12 @@ contract VotingState {
         voterQuestions = _voterQuestions;
         for (uint i = 0; i < _votersPublicKeys.length; i++) {
             votersPublicKeys.push(_votersPublicKeys[i]);
+        }
+        for (uint i = 0; i < _sealersAddresses.length; i++) {
+            sealersAddresses[_sealersAddresses[i]] = true;
+        }
+        for (uint i = 0; i < _votersAddresses.length; i++) {
+            votersAddresses[_votersAddresses[i]] = true;
         }
         state = VotingPhase.VOTING;
     }
@@ -60,7 +70,7 @@ contract VotingState {
         return voterQuestions;
     }
 
-    function vote(Vote memory newVote) onVoting public {
+    function vote(Vote memory newVote) onVoting onlyVoter public {
         require(newVote.encryptedVotes.length == candidates.length, "Invalid vote content length");
         require(newVote.voterEncryptedAnswers.length == voterQuestions.length, "Invalid answers length");
         require(newVote.encryptedVotes.length == newVote.encryptedExponents.length, "Invalid encrypted votes length");
@@ -69,18 +79,17 @@ contract VotingState {
         awaitingValidationVotesQueue[tag] = newVote;
     }
 
-    function getVoteAwaitingForValidation() onVoting public view returns (Vote memory) {
+    function getVoteAwaitingForValidation() onVoting onlySealer public view returns (Vote memory) {
         string memory tag = awaitingValidationVotesTags[0];
         return awaitingValidationVotesQueue[tag];
     }
 
-    function confirmVoteValidity(Vote memory validatedVote) onVoting public {
-        //TODO add sealerAddress
+    function confirmVoteValidity(Vote memory validatedVote) onVoting onlySealer public {
         validatedVotes.push(validatedVote);
         removeVoteFromQueue(validatedVote.ringSignature.tag);
     }
 
-    function invalidateVote(Vote memory invalidVote) onVoting public {
+    function invalidateVote(Vote memory invalidVote) onVoting onlySealer public {
         invalidVotes.push(invalidVote);
         removeVoteFromQueue(invalidVote.ringSignature.tag);
     }
@@ -89,7 +98,7 @@ contract VotingState {
         state = VotingPhase.TALLYING;
     }
 
-    function removeVoteFromQueue(string memory tag) onVoting private {
+    function removeVoteFromQueue(string memory tag) onVoting onlySealer private {
         for (uint i = 0; i < awaitingValidationVotesTags.length; i++) {
             string memory currentTag = awaitingValidationVotesTags[i];
             if (keccak256(bytes(currentTag)) == keccak256(bytes(tag))) {
@@ -122,6 +131,16 @@ contract VotingState {
         _;
     }
 
+    modifier onlySealer() {
+        require(sealersAddresses[msg.sender], "Only selaer can call this function");
+        _;
+    }
+
+    modifier onlyVoter() {
+        require(votersAddresses[msg.sender], "Only voter can call this function");
+        _;
+    }
+
     modifier onInitialization() {
         require(state == VotingPhase.INITIALIZATION, "This funtion may be called only on initialization");
         _;
@@ -141,93 +160,5 @@ contract VotingState {
         require(state == VotingPhase.VOTING || state == VotingPhase.TALLYING, "This funtion may be called only on voting");
         _;
     }
-
-//    function validateRsaRingSignature(RingSignature memory ringSignature, string memory signedMessage) private {
-//        BigNumber memory hash = cryptoHash(signedMessage);
-//        logger.push("BASE64:");
-//        logger.push(Base64.encode(hash.val, true, true));
-//        logger.push(Base64.encode(hash.val, true, false));
-//        logger.push(Base64.encode(hash.val, false, true));
-//        logger.push(Base64.encode(hash.val, true, true));
-//        bytes memory testBytes = xorByteArrays(hash.val, hash.val);
-//        uint ringSize = ringSignature.ringValues.length;
-//        logger.push("RING VERIFICATION");
-//        for (uint i = 0; i < ringSize; i++) {
-//            logger.push("RING VALUE");
-//            logger.push(iToHex2(Base64.decode(ringSignature.ringValues[i])));
-////            BigNumber memory ringValue = BigNumbers.init(ringSignature.ringValues[i], false);
-////            hash = hash.add(ringValue);
-//        }
-//    }
-
-//    function xorByteArrays(bytes memory arr1, bytes memory arr2) public pure returns (bytes memory) {
-//        require(arr1.length == arr2.length, "Arrays must be of equal length");
-//
-//        bytes memory result = new bytes(arr1.length);
-//
-//        for (uint256 i = 0; i < arr1.length; i++) {
-//            result[i] = arr1[i] ^ arr2[i];
-//        }
-//
-//        return result;
-//    }
-
-//    function cryptoHash(string memory message) private returns (BigNumber memory) {
-//        logger.push("bytes");
-//        logger.push(message);
-//        logger.push(Base64.encode(bytes(message), false, false));
-//        logger.push(iToHex(sha256(bytes(message))));
-//        logger.push(iToHex(sha256(bytes(message))));
-//        logger.push(iToHex2(abi.encodePacked(sha256(bytes(message)))));
-//        bytes memory hashBytes = abi.encodePacked(sha256(bytes(message)));
-//        logger.push(Base64.encode(hashBytes, false, false));
-//        return BigNumbers.init(hashBytes, false);
-//    }
-
-//    function iToHex2(bytes memory buffer) public pure returns (string memory) {
-//
-//        // Fixed buffer size for hexadecimal convertion
-//        bytes memory converted = new bytes(buffer.length * 2);
-//
-//        bytes memory _base = "0123456789abcdef";
-//
-//        for (uint256 i = 0; i < buffer.length; i++) {
-//            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
-//            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
-//        }
-//
-//        return string(abi.encodePacked("0x", converted));
-//    }
-
-//    function iToHex(bytes32 buffer) public pure returns (string memory) {
-//
-//        // Fixed buffer size for hexadecimal convertion
-//        bytes memory converted = new bytes(buffer.length * 2);
-//
-//        bytes memory _base = "0123456789abcdef";
-//
-//        for (uint256 i = 0; i < buffer.length; i++) {
-//            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
-//            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
-//        }
-//
-//        return string(abi.encodePacked("0x", converted));
-//    }
-
-//    function addVote(Vote memory vote) public {
-//        votes.push(vote);
-//    }
-//
-//    function getVotes() public view returns (Vote[] memory) {
-//        return votes;
-//    }
-
-//    function getLogs() public view returns (string[] memory){
-//        return logger;
-//    }
-
-//    function clearLogs() public {
-//        logger = new string[](0);
-//    }
 
 }

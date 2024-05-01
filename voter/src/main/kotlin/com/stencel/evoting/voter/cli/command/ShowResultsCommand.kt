@@ -7,7 +7,8 @@ import picocli.CommandLine
 @Component
 @CommandLine.Command(
     name = "showResults",
-    description = ["Show voting results"]
+    description = ["Show voting results"],
+    mixinStandardHelpOptions = true
 )
 class ShowResultsCommand(
     private val votingService: VotingService,
