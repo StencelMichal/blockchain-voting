@@ -44,7 +44,6 @@ contract VotingState {
         address[] memory _sealersAddresses,
         address[] memory _votersAddresses
     ) onlyBootnode onInitialization public {
-        // TODO assert bootnode
         commonEncryptionKey = key;
         candidates = _candidates;
         voterQuestions = _voterQuestions;
